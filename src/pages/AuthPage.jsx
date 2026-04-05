@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { createMaster } from "../models/master";
-import { getMasters, saveMasters } from "../storage/masters";
-import { setCurrentUser } from "../storage/currentUser";
+import { loginUser, registerUser } from "../api/api";
+import { saveToken, saveUser } from "../storage/auth";
 
 function AuthPage() {
   const navigate = useNavigate();
@@ -14,7 +13,8 @@ function AuthPage() {
     name: "",
     email: "",
     password: "",
-    phone: ""
+    phone: "",
+    specialization: ""
   });
 
   const handleChange = (e) => {
@@ -24,75 +24,47 @@ function AuthPage() {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (isLogin) {
-      // ===== LOGIN =====
-      const masters = getMasters();
-      const clients =
-        JSON.parse(localStorage.getItem("clients")) || [];
+    try {
 
-      const user =
-        masters.find((m) => m.email === form.email && m.password === form.password) ||
-        clients.find((c) => c.email === form.email && c.password === form.password);
+      if (isLogin) {
 
-      if (!user) {
-        alert("Неверный email или пароль");
-        return;
-      }
-
-      setCurrentUser(user);
-      navigate("/dashboard");
-    } else {
-      // ===== REGISTER =====
-      if (role === "master") {
-        const masters = getMasters();
-
-        const existing = masters.find(
-          (m) => m.email === form.email
-        );
-
-        if (existing) {
-          alert("Email уже используется");
-          return;
-        }
-
-        const newMaster = createMaster({
-          ...form,
-          role: "master"
+        const result = await loginUser({
+          email: form.email,
+          password: form.password
         });
 
-        saveMasters([...masters, newMaster]);
-        setCurrentUser(newMaster);
-      } else {
-        const clients =
-          JSON.parse(localStorage.getItem("clients")) || [];
+        saveToken(result.token);
+        saveUser(result.user);
 
-        const existing = clients.find(
-          (c) => c.email === form.email
-        );
+        alert("Вход выполнен");
 
-        if (existing) {
-          alert("Email уже используется");
-          return;
+        if (result.user.role === "master") {
+          navigate(`/master/${result.user.id}`);
+        } else {
+          navigate("/masters");
         }
 
-        const newClient = {
-          id: Date.now().toString(),
-          ...form,
-          role: "client"
-        };
+      } else {
 
-        localStorage.setItem(
-          "clients",
-          JSON.stringify([...clients, newClient])
-        );
+        await registerUser({
+          name: form.name,
+          email: form.email,
+          password: form.password,
+          phone: form.phone,
+          role: role,
+          specialization: role === "master" ? form.specialization : null
+        });
 
-        setCurrentUser(newClient);
+        alert("Регистрация успешна");
+        setIsLogin(true);
+
       }
 
-      navigate("/dashboard");
+    } catch (error) {
+      alert(error.message);
     }
   };
 
@@ -101,8 +73,12 @@ function AuthPage() {
       <h2>{isLogin ? "Вход" : "Регистрация"}</h2>
 
       <div style={{ marginBottom: "15px" }}>
-        <button onClick={() => setIsLogin(true)}>Войти</button>
+        <button type="button" onClick={() => setIsLogin(true)}>
+          Войти
+        </button>
+
         <button
+          type="button"
           onClick={() => setIsLogin(false)}
           style={{ marginLeft: "10px" }}
         >
@@ -135,6 +111,7 @@ function AuthPage() {
       )}
 
       <form onSubmit={handleSubmit}>
+
         {!isLogin && (
           <>
             <input
@@ -155,6 +132,23 @@ function AuthPage() {
               required
             />
           </>
+        )}
+
+        {!isLogin && role === "master" && (
+          <select
+            name="specialization"
+            value={form.specialization}
+            onChange={handleChange}
+            required
+          >
+            <option value="">Выберите специализацию</option>
+            <option value="nails">Ногтевой сервис</option>
+            <option value="brows">Бровист</option>
+            <option value="lashes">Лэшмейкер</option>
+            <option value="hair">Парикмахер</option>
+            <option value="massage">Массаж</option>
+            <option value="cosmetology">Косметолог</option>
+          </select>
         )}
 
         <input
@@ -178,6 +172,7 @@ function AuthPage() {
         <button type="submit">
           {isLogin ? "Войти" : "Зарегистрироваться"}
         </button>
+
       </form>
     </div>
   );

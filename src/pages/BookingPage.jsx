@@ -1,114 +1,210 @@
+import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import Calendar from "react-calendar";
-import "react-calendar/dist/Calendar.css";
-import { getCurrentUser } from "../storage/currentUser";
-import { getAvailableSlots } from "../utils/slotGenerator";
-import { addAppointment } from "../storage/appointments";
-import { useNavigate } from "react-router-dom";
+import { getServices, createAppointment, getAvailableSlots } from "../api/api";
+import { getToken, getCurrentUser } from "../storage/auth";
+import Calendar from "../components/Calendar";
 
-function BookingPage({ selectedService }) {
+function BookingPage() {
+
+  const { masterId } = useParams();
   const navigate = useNavigate();
-  const user = getCurrentUser();
-  const [selectedDate, setSelectedDate] = useState(new Date());
+
+  const token = getToken();
+  const currentUser = getCurrentUser();
+
+  const [services, setServices] = useState([]);
+  const [selectedServices, setSelectedServices] = useState([]);
   const [slots, setSlots] = useState([]);
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
 
-  // Генерация слотов при выборе даты
+  // загрузка услуг
   useEffect(() => {
-    if (!user || !selectedService) return; // Проверка важна!
 
-    const dateStr = selectedDate.toISOString().split("T")[0];
-    const available = getAvailableSlots(
-      user.id,
-      dateStr,
-      selectedService.duration
-    );
-    setSlots(available);
-  }, [selectedDate, user?.id, selectedService]);
+    async function loadServices() {
+      try {
+        const data = await getServices(masterId, token);
+        setServices(data);
+      } catch (err) {
+        console.error(err);
+      }
+    }
 
-  // Клик на слот = создание записи
-  const handleBook = (slot) => {
-    if (!user || !selectedService) return;
+    loadServices();
 
-    const dateStr = selectedDate.toISOString().split("T")[0];
+  }, [masterId]);
 
-    addAppointment({
-      id: crypto.randomUUID(),
-      masterId: user.id,
-      serviceId: selectedService.id,
-      date: dateStr,
-      startTime: slot.start,
-      endTime: slot.end,
-    });
+  // суммарная длительность
+  const totalDuration = selectedServices.reduce(
+    (sum, s) => sum + s.duration,
+    0
+  );
 
-    alert(`Вы записаны на ${slot.start} - ${slot.end}`);
-    setSlots((prev) => prev.filter((s) => s.start !== slot.start)); // убрать слот после записи
+  // загрузка слотов
+  useEffect(() => {
+
+    async function loadSlots() {
+
+      if (!totalDuration || !date) return;
+
+      try {
+        const data = await getAvailableSlots(masterId, totalDuration, date);
+        setSlots(data);
+      } catch (err) {
+        console.error(err);
+      }
+
+    }
+
+    loadSlots();
+
+  }, [totalDuration, date]);
+
+  // выбор услуги
+  const handleServiceChange = (service, checked) => {
+
+    if (checked) {
+      setSelectedServices(prev => [...prev, service]);
+    } else {
+      setSelectedServices(prev =>
+        prev.filter(s => s.id !== service.id)
+      );
+    }
+
   };
 
-  // Подсветка дней календаря
-  const tileClassName = ({ date, view }) => {
-    if (view !== "month" || !selectedService) return "";
+  // запись
+  const handleBooking = async () => {
 
-    const dateStr = date.toISOString().split("T")[0];
-    const available = getAvailableSlots(user.id, dateStr, selectedService.duration);
+    if (selectedServices.length === 0) {
+      alert("Выберите хотя бы одну услугу");
+      return;
+    }
 
-    if (!available.length) return "full-day"; // занято или выходной
-    return "available-day"; // есть свободные слоты
+    if (!date) {
+      alert("Выберите дату");
+      return;
+    }
+
+    if (!time) {
+      alert("Выберите время");
+      return;
+    }
+
+    try {
+
+      // ⚠️ пока отправляем первую услугу (упрощение)
+      await createAppointment({
+        masterId,
+        serviceId: selectedServices[0].id,
+        date,
+        time,
+        clientName: currentUser?.name || "клиент"
+      });
+
+      alert("Запись успешно создана");
+      navigate(`/master/${masterId}`);
+
+    } catch (error) {
+
+      console.error(error);
+      alert("Ошибка создания записи");
+
+    }
+
   };
-
-  // Если услуга не выбрана
-  if (!selectedService) {
-    return (
-      <div style={{ maxWidth: 600, margin: "20px auto", fontFamily: "Arial" }}>
-        <button
-          onClick={() => navigate("/")}
-          style={{ marginBottom: 20, padding: "5px 10px", cursor: "pointer" }}
-        >
-          ← Вернуться на главную
-        </button>
-        <p>Пожалуйста, выберите услугу.</p>
-      </div>
-    );
-  }
 
   return (
-    <div>
-      <button
-        onClick={() => navigate("/")}
-         >
-        ← Вернуться на главную
-      </button>
 
-      <h2>Выберите дату</h2>
-      <Calendar
-        onChange={setSelectedDate}
-        value={selectedDate}
-        tileClassName={tileClassName}
-      />
+    <div style={{ padding: "20px" }}>
 
-      <h3>Свободные слоты</h3>
-      {slots.length === 0 && <p>Свободных слотов нет</p>}
-      <div style={{ display: "flex", flexWrap: "wrap", marginTop: 10 }}>
-        {slots.map((slot) => (
-          <button
-            key={slot.start}
-            onClick={() => handleBook(slot)}
-            style={{
-              margin: "5px",
-              padding: "10px 15px",
-              cursor: "pointer",
-              backgroundColor: "#4CAF50",
-              color: "white",
-              border: "none",
-              borderRadius: 4,
-            }}
-          >
-            {slot.start} - {slot.end}
-          </button>
+      <h2>Запись к мастеру</h2>
+
+      {/* УСЛУГИ */}
+      <div>
+
+        <h3>Выберите услуги:</h3>
+
+        {services.map(service => (
+
+          <div key={service.id}>
+            <label>
+
+              <input
+                type="checkbox"
+                onChange={(e) =>
+                  handleServiceChange(service, e.target.checked)
+                }
+              />
+
+              {service.title} — {service.price} ₽ ({service.duration} мин)
+
+            </label>
+          </div>
+
         ))}
+
       </div>
 
+      {/* ИТОГ */}
+      <div style={{ marginTop: "10px" }}>
+        <strong>Общая длительность: {totalDuration} мин</strong>
+      </div>
+
+      {/* КАЛЕНДАРЬ */}
+      <div style={{ marginTop: "20px" }}>
+
+        <h3>Выберите дату:</h3>
+
+        <Calendar
+          masterId={masterId}
+          duration={totalDuration}
+          onSelectDate={setDate}
+          getAvailableSlots={getAvailableSlots}
+        />
+
+      </div>
+
+      {/* СЛОТЫ */}
+      <div style={{ marginTop: "20px" }}>
+
+        <h3>Доступное время</h3>
+
+        {slots.length === 0 && <p>Нет свободных слотов</p>}
+
+        {slots.map((slot) => (
+
+          <button
+            key={slot}
+            onClick={() => setTime(slot)}
+            style={{
+              margin: "5px",
+              padding: "8px 12px",
+              borderRadius: "8px",
+              border: "1px solid #ccc",
+              background: time === slot ? "#4f46e5" : "white",
+              color: time === slot ? "white" : "black"
+            }}
+          >
+            {slot}
+          </button>
+
+        ))}
+
+      </div>
+
+      {/* КНОПКА */}
+      <button
+        onClick={handleBooking}
+        style={{ marginTop: "20px" }}
+      >
+        Подтвердить запись
+      </button>
+
     </div>
+
   );
+
 }
 
 export default BookingPage;

@@ -1,43 +1,73 @@
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getMasters } from "../storage/masters";
-import { getCurrentUser } from "../storage/currentUser";
+import { getMasterById } from "../api/api";
+import { getToken, getCurrentUser } from "../storage/auth";
+import Portfolio from "../pages/Portfolio";
 
 function MasterProfilePage() {
+
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const masters = getMasters();
+  const [master, setMaster] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
   const currentUser = getCurrentUser();
 
-  const master = masters.find((m) => m.id === id);
+  useEffect(() => {
 
-  if (!master) {
-    return <p>Мастер не найден</p>;
-  }
+    async function fetchMaster() {
+
+      try {
+
+        const token = getToken();
+        const data = await getMasterById(id, token);
+        setMaster(data);
+
+      } catch (err) {
+
+        setError(err.message || "Ошибка при загрузке мастера");
+
+      } finally {
+
+        setLoading(false);
+
+      }
+
+    }
+
+    fetchMaster();
+
+  }, [id]);
+
+  if (loading) return <p>Загрузка профиля мастера...</p>;
+  if (error) return <p style={{ color: "red" }}>{error}</p>;
+  if (!master) return <p>Мастер не найден</p>;
 
   const isOwner =
-    currentUser &&
-    currentUser.role === "master" &&
-    currentUser.id === master.id;
+    currentUser?.role === "master" &&
+    String(currentUser?.id) === String(master.id);
+
+  const isClient = currentUser?.role === "client";
 
   return (
-    <div>
+    <div style={{ padding: "20px" }}>
+
       <h2>{master.name}</h2>
-      <p>{master.phone}</p>
+      <p>Email: {master.email}</p>
 
-      <h3>Портфолио</h3>
-      <p>Здесь будут фотографии работ</p>
-
-      <h3>Услуги</h3>
-
-      {/* Если смотрит клиент */}
-      {!isOwner && (
-        <button onClick={() => navigate(`/booking/${master.id}`)}>
+      {/* КНОПКА ЗАПИСИ */}
+      {isClient && (
+        <button
+          onClick={() => navigate(`/booking/${master.id}`)}
+          style={{ marginTop: "10px" }}
+        >
           Записаться
         </button>
       )}
 
-      {/* Если мастер смотрит свой профиль */}
+      {/* УПРАВЛЕНИЕ */}
       {isOwner && (
         <div style={{ marginTop: "20px" }}>
           <button onClick={() => navigate("/services")}>
@@ -52,6 +82,20 @@ function MasterProfilePage() {
           </button>
         </div>
       )}
+
+      {/* ПОРТФОЛИО — ВОТ ОНО */}
+      <Portfolio
+        masterId={master.id}
+        isOwner={isOwner}
+      />
+
+      <button
+        onClick={() => navigate("/masters")}
+        style={{ marginTop: "30px" }}
+      >
+        На главную
+      </button>
+
     </div>
   );
 }

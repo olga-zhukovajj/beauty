@@ -1,96 +1,133 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getCurrentUser } from "../storage/currentUser";
-import {
-  getWeeklySchedule,
-  saveWeeklySchedule,
-} from "../storage/weeklySchedule";
+import { getToken } from "../storage/auth";
+import { getSchedule, saveSchedule } from "../api/api";
 
 const days = [
-  { id: 0, label: "Понедельник" },
-  { id: 1, label: "Вторник" },
-  { id: 2, label: "Среда" },
-  { id: 3, label: "Четверг" },
-  { id: 4, label: "Пятница" },
-  { id: 5, label: "Суббота" },
-  { id: 6, label: "Воскресенье" },
+  { id: 1, label: "Понедельник" },
+  { id: 2, label: "Вторник" },
+  { id: 3, label: "Среда" },
+  { id: 4, label: "Четверг" },
+  { id: 5, label: "Пятница" },
+  { id: 6, label: "Суббота" },
+  { id: 0, label: "Воскресенье" }
 ];
 
 function SchedulePage() {
+
   const navigate = useNavigate();
-  const user = getCurrentUser();
+  const token = getToken();
+  const masterId = JSON.parse(atob(token.split(".")[1])).id;
+
   const [schedule, setSchedule] = useState({});
 
   useEffect(() => {
-    if (!user) return;
-    setSchedule(getWeeklySchedule(user.id));
-  }, [user?.id]);
+
+    async function fetchSchedule() {
+
+      try {
+
+        const data = await getSchedule(masterId, token);
+        setSchedule(data);
+
+      } catch (err) {
+
+        alert(err.message);
+
+      }
+
+    }
+
+    fetchSchedule();
+
+  }, [masterId, token]);
+
+  const toggleDay = (dayId) => {
+
+    setSchedule((prev) => ({
+      ...prev,
+      [dayId]: prev[dayId] ? null : { start: "09:00", end: "18:00" }
+    }));
+
+  };
 
   const handleChange = (dayId, field, value) => {
+
     setSchedule((prev) => ({
       ...prev,
       [dayId]: {
         ...prev[dayId],
-        [field]: value,
-      },
+        [field]: value
+      }
     }));
+
   };
 
-  const toggleDay = (dayId) => {
-    setSchedule((prev) => ({
-      ...prev,
-      [dayId]: prev[dayId] ? null : { start: "09:00", end: "18:00" },
-    }));
+  const handleSave = async () => {
+
+    try {
+
+      await saveSchedule(masterId, schedule, token);
+      alert("График сохранён");
+
+    } catch (err) {
+
+      alert(err.message);
+
+    }
+
   };
-
-  const handleSave = () => {
-    saveWeeklySchedule(user.id, schedule);
-    alert("График сохранён");
-  };
-
-
-  const goBack = () => {
-    navigate("/dashboard"); 
-  };
-
 
   return (
     <div>
+
       <h2>График работы</h2>
 
       {days.map((day) => (
-        <div key={day.id} style={{ marginBottom: 10 }}>
+
+        <div key={day.id} style={{marginBottom:20}}>
+
           <strong>{day.label}</strong>
 
-          <button onClick={() => toggleDay(day.id)}>
-            {schedule[day.id] ? "Рабочий день " : "Выходной "}
+          <button onClick={() => toggleDay(day.id)} style={{marginLeft:10}}>
+            {schedule[day.id] ? "Рабочий день" : "Выходной"}
           </button>
 
           {schedule[day.id] && (
-            <>
+
+            <div style={{marginTop:10}}>
+
               <input
                 type="time"
                 value={schedule[day.id].start}
-                onChange={(e) =>
-                  handleChange(day.id, "start", e.target.value)
-                }
+                onChange={(e)=>handleChange(day.id,"start",e.target.value)}
               />
+
+              <span style={{margin:"0 10px"}}>—</span>
+
               <input
                 type="time"
                 value={schedule[day.id].end}
-                onChange={(e) =>
-                  handleChange(day.id, "end", e.target.value)
-                }
+                onChange={(e)=>handleChange(day.id,"end",e.target.value)}
               />
-            </>
+
+            </div>
+
           )}
+
         </div>
+
       ))}
 
       <button onClick={handleSave}>Сохранить</button>
-      <button onClick={goBack}>← Вернуться на главную</button>
+
+      <button onClick={() => navigate(`/master/${masterId}`)}>
+        ← Вернуться в профиль
+      </button>
+
     </div>
   );
+
 }
 
 export default SchedulePage;

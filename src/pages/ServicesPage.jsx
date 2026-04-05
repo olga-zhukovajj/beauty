@@ -1,52 +1,57 @@
 import { useState, useEffect } from "react";
-import { getCurrentUser } from "../storage/currentUser";
-import { getServicesForMaster, addServiceForMaster, removeServiceForMaster } from "../storage/services";
-import { createService } from "../models/service";
 import { useNavigate } from "react-router-dom";
+import { getToken } from "../storage/auth";
+import { getServices, addService, removeService } from "../api/api";
 
 function ServicesPage() {
   const navigate = useNavigate();
-  const [user] = useState (() => getCurrentUser());
+  const token = getToken();
   const [services, setServices] = useState([]);
   const [form, setForm] = useState({ title: "", duration: "", price: "" });
 
-    useEffect(() => {
-        if (!user) return;
+  const masterId = JSON.parse(atob(token.split(".")[1])).id;
 
-        const services = getServicesForMaster(user.id);
-        setServices(services);
-    }, [user?.id]);
+  useEffect(() => {
+    async function fetchServices() {
+      try {
+        const data = await getServices(masterId, token);
+        setServices(data);
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+    fetchServices();
+  }, [masterId, token]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleAdd = (e) => {
+  const handleAdd = async (e) => {
     e.preventDefault();
-    const newService = createService({
-      title: form.title,
-      duration: Number(form.duration),
-      price: Number(form.price)
-    });
-    addServiceForMaster(user.id, newService);
-    setServices(getServicesForMaster(user.id));
-    setForm({ title: "", duration: "", price: "" });
+    try {
+      await addService(masterId, form, token);
+      const updated = await getServices(masterId, token);
+      setServices(updated);
+      setForm({ title: "", duration: "", price: "" });
+    } catch (err) {
+      alert(err.message);
+    }
   };
 
-  const handleRemove = (id) => {
-    removeServiceForMaster(user.id, id);
-    setServices(getServicesForMaster(user.id));
-  };
-
-
-  const goBack = () => {
-    navigate("/dashboard"); 
+  const handleRemove = async (id) => {
+    try {
+      await removeService(masterId, id, token);
+      const updated = await getServices(masterId, token);
+      setServices(updated);
+    } catch (err) {
+      alert(err.message);
+    }
   };
 
   return (
     <div>
       <h2>Услуги мастера</h2>
-
       <form onSubmit={handleAdd}>
         <input name="title" placeholder="Название услуги" value={form.title} onChange={handleChange} required />
         <input name="duration" placeholder="Длительность (мин)" type="number" value={form.duration} onChange={handleChange} required />
@@ -55,14 +60,15 @@ function ServicesPage() {
       </form>
 
       <ul>
-        {services.map((s) => (
+        {services.map(s => (
           <li key={s.id}>
             {s.title} — {s.duration} мин — {s.price} ₽
             <button onClick={() => handleRemove(s.id)}>Удалить</button>
           </li>
         ))}
       </ul>
-      <button onClick={goBack}>← Вернуться на главную</button>
+
+      <button onClick={() => navigate(`/master/${masterId}`)}>← Вернуться в профиль</button>
     </div>
   );
 }
