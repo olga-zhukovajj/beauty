@@ -97,34 +97,41 @@ export async function saveSchedule(masterId, schedule, token) {
 }
 
 
-export async function getAvailableSlots(masterId, duration, date) {
-
+export async function getAvailableSlots(masterId, serviceId, date) {
   const response = await fetch(
-    `http://localhost:5000/api/masters/${masterId}/available-slots?duration=${duration}&date=${date}`
+    `http://localhost:5000/api/masters/${masterId}/available-slots?serviceId=${serviceId}&date=${date}`
   );
 
   if (!response.ok) {
     throw new Error("Ошибка получения слотов");
   }
 
-  return response.json();
+  const data = await response.json();
+
+
+  return data;
 }
 
 
 export async function createAppointment(data) {
+
+  const payload = {
+    master_id: data.masterId,
+    service_id: data.serviceId,
+    appointment_date: data.date,
+    start_time: data.time,
+    client_name: data.clientName,
+    client_comment: data.clientComment,
+  };
+
+  console.log("📤 ОТПРАВКА:", payload);
 
   const response = await fetch("http://localhost:5000/api/appointments", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({
-      master_id: data.masterId,
-      service_id: data.serviceId,
-      appointment_date: data.date,
-      start_time: data.time,
-      client_name: data.clientName
-    })
+    body: JSON.stringify(payload)
   });
 
   if (!response.ok) {

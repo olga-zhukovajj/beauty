@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-function Calendar({ masterId, duration, onSelectDate, getAvailableSlots }) {
+function Calendar({ masterId, serviceId, duration, onSelectDate, getAvailableSlots }) {
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [availability, setAvailability] = useState({});
@@ -29,10 +29,7 @@ function Calendar({ masterId, duration, onSelectDate, getAvailableSlots }) {
 
     async function loadAvailability() {
 
-      if (!duration) {
-        setAvailability({});
-        return;
-      }
+      if (!duration || !masterId || !serviceId) return;
 
       const data = {};
 
@@ -41,8 +38,8 @@ function Calendar({ masterId, duration, onSelectDate, getAvailableSlots }) {
         const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
         try {
-          const slots = await getAvailableSlots(masterId, duration, dateStr);
-          data[dateStr] = slots.length > 0;
+          const slots = await getAvailableSlots(masterId, serviceId, dateStr);
+          data[dateStr] = Array.isArray(slots) && slots.length > 0;
         } catch {
           data[dateStr] = false;
         }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getServices } from "../api/api";
 import { getToken } from "../storage/auth";
+import "../styles/pages/MasterCard.css";
 
 function MasterCard({ master }) {
   const navigate = useNavigate();
@@ -12,7 +13,7 @@ function MasterCard({ master }) {
     async function loadServices() {
       try {
         const data = await getServices(master.id, token);
-        setServices(data.slice(0, 3)); // показываем только 3 услуги
+        setServices(data.slice(0, 3));
       } catch {
         setServices([]);
       }
@@ -22,58 +23,41 @@ function MasterCard({ master }) {
   }, [master.id]);
 
   return (
-    <div
-      style={{
-        border: "1px solid #ddd",
-        borderRadius: "12px",
-        padding: "20px",
-        background: "#fff",
-        boxShadow: "0 4px 10px rgba(0,0,0,0.05)",
-        transition: "0.2s",
-      }}
-    >
-      <h3 style={{ marginBottom: "5px" }}>{master.name}</h3>
-      <p style={{ color: "#777", fontSize: "14px" }}>{master.email}</p>
+    <div className="master-card">
 
-      <div style={{ marginTop: "10px" }}>
-        <strong>Доступные услуги:</strong>
+      <div className="card-header">
+        <div className="avatar">
+          {master.name?.[0] || "M"}
+        </div>
 
-        {services.length === 0 && (
-          <p style={{ fontSize: "14px", color: "#999" }}>
-            Услуги пока не добавлены
-          </p>
+        <div className="master-info">
+          <h3>{master.name}</h3>
+          <p>{master.email}</p>
+        </div>
+      </div>
+
+      <div className="services">
+        <span className="label">Услуги</span>
+
+        {services.length === 0 ? (
+          <p className="empty">Пока нет услуг</p>
+        ) : (
+          services.map((s) => (
+            <div className="service-item" key={s.id}>
+              <span>{s.title}</span>
+              <span>{s.price} ₽</span>
+            </div>
+          ))
         )}
-
-        {services.map((s) => (
-          <div
-            key={s.id}
-            style={{
-              fontSize: "14px",
-              marginTop: "4px",
-              display: "flex",
-              justifyContent: "space-between",
-            }}
-          >
-            <span>{s.title}</span>
-            <span>{s.price} ₽</span>
-          </div>
-        ))}
       </div>
 
       <button
+        className="open-btn"
         onClick={() => navigate(`/master/${master.id}`)}
-        style={{
-          marginTop: "15px",
-          padding: "8px 12px",
-          borderRadius: "8px",
-          border: "none",
-          background: "#4f46e5",
-          color: "white",
-          cursor: "pointer",
-        }}
       >
         Открыть профиль
       </button>
+
     </div>
   );
 }

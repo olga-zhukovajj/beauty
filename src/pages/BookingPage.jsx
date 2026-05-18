@@ -5,7 +5,6 @@ import { getToken, getCurrentUser } from "../storage/auth";
 import Calendar from "../components/Calendar";
 
 function BookingPage() {
-
   const { masterId } = useParams();
   const navigate = useNavigate();
 
@@ -13,167 +12,125 @@ function BookingPage() {
   const currentUser = getCurrentUser();
 
   const [services, setServices] = useState([]);
-  const [selectedServices, setSelectedServices] = useState([]);
+  const [selectedService, setSelectedService] = useState(null);
   const [slots, setSlots] = useState([]);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
+  const [comment, setComment] = useState("");
 
-  // загрузка услуг
+  // ===== УСЛУГИ =====
   useEffect(() => {
-
     async function loadServices() {
       try {
         const data = await getServices(masterId, token);
-        setServices(data);
+        setServices(Array.isArray(data) ? data : []);
       } catch (err) {
-        console.error(err);
+        console.error("Ошибка загрузки услуг", err);
       }
     }
 
     loadServices();
-
   }, [masterId]);
 
-  // суммарная длительность
-  const totalDuration = selectedServices.reduce(
-    (sum, s) => sum + s.duration,
-    0
-  );
-
-  // загрузка слотов
+  // ===== СЛОТЫ =====
   useEffect(() => {
-
     async function loadSlots() {
 
-      if (!totalDuration || !date) return;
+      if (!selectedService || !date) return;
 
       try {
-        const data = await getAvailableSlots(masterId, totalDuration, date);
+
+        const data = await getAvailableSlots(
+          masterId,
+          selectedService.id,
+          date
+        );
+        console.log("ПРИШЛИ СЛОТЫ:", data); 
         setSlots(data);
+
       } catch (err) {
-        console.error(err);
+        console.error("Ошибка слотов:", err);
       }
 
     }
 
     loadSlots();
+  }, [selectedService, date]);
 
-  }, [totalDuration, date]);
-
-  // выбор услуги
-  const handleServiceChange = (service, checked) => {
-
-    if (checked) {
-      setSelectedServices(prev => [...prev, service]);
-    } else {
-      setSelectedServices(prev =>
-        prev.filter(s => s.id !== service.id)
-      );
-    }
-
-  };
-
-  // запись
+  // ===== ЗАПИСЬ =====
   const handleBooking = async () => {
-
-    if (selectedServices.length === 0) {
-      alert("Выберите хотя бы одну услугу");
-      return;
-    }
-
-    if (!date) {
-      alert("Выберите дату");
-      return;
-    }
-
-    if (!time) {
-      alert("Выберите время");
-      return;
-    }
+    if (!selectedService) return alert("Выберите услугу");
+    if (!date) return alert("Выберите дату");
+    if (!time) return alert("Выберите время");
 
     try {
-
-      // ⚠️ пока отправляем первую услугу (упрощение)
       await createAppointment({
         masterId,
-        serviceId: selectedServices[0].id,
+        serviceId: selectedService.id,
         date,
         time,
-        clientName: currentUser?.name || "клиент"
+        clientName: currentUser?.name || "клиент",
+        clientComment: comment
       });
 
       alert("Запись успешно создана");
       navigate(`/master/${masterId}`);
-
     } catch (error) {
-
       console.error(error);
       alert("Ошибка создания записи");
-
     }
-
   };
 
   return (
-
     <div style={{ padding: "20px" }}>
-
       <h2>Запись к мастеру</h2>
 
-      {/* УСЛУГИ */}
-      <div>
+      {/* ===== УСЛУГИ ===== */}
+      <h3>Выберите услугу:</h3>
 
-        <h3>Выберите услуги:</h3>
+      {services.map(service => (
+        <div key={service.id}>
+          <label>
+            <input
+              type="radio"
+              name="service"
+              checked={selectedService?.id === service.id}
+              onChange={() => setSelectedService(service)}
+            />
 
-        {services.map(service => (
+            {service.title} — {service.price} ₽ ({service.duration} мин)
+          </label>
+        </div>
+      ))}
 
-          <div key={service.id}>
-            <label>
+      {/* ===== ИНФО ===== */}
+      {selectedService && (
+        <p style={{ marginTop: "10px" }}>
+          Длительность: {selectedService.duration} мин
+        </p>
+      )}
 
-              <input
-                type="checkbox"
-                onChange={(e) =>
-                  handleServiceChange(service, e.target.checked)
-                }
-              />
-
-              {service.title} — {service.price} ₽ ({service.duration} мин)
-
-            </label>
-          </div>
-
-        ))}
-
-      </div>
-
-      {/* ИТОГ */}
-      <div style={{ marginTop: "10px" }}>
-        <strong>Общая длительность: {totalDuration} мин</strong>
-      </div>
-
-      {/* КАЛЕНДАРЬ */}
+      {/* ===== КАЛЕНДАРЬ ===== */}
       <div style={{ marginTop: "20px" }}>
-
         <h3>Выберите дату:</h3>
-
         <Calendar
           masterId={masterId}
-          duration={totalDuration}
+          serviceId={selectedService?.id}
+          duration={selectedService?.duration || 0}
           onSelectDate={setDate}
           getAvailableSlots={getAvailableSlots}
         />
-
       </div>
 
-      {/* СЛОТЫ */}
+      {/* ===== СЛОТЫ ===== */}
       <div style={{ marginTop: "20px" }}>
-
         <h3>Доступное время</h3>
 
-        {slots.length === 0 && <p>Нет свободных слотов</p>}
+        {slots.length === 0 && selectedService && date && (
+          <p>Нет свободных слотов</p>
+        )}
 
-        {slots.map((slot) => (
-
+        {slots.map((slot) => ( 
           <button
             key={slot}
             onClick={() => setTime(slot)}
@@ -188,23 +145,33 @@ function BookingPage() {
           >
             {slot}
           </button>
-
         ))}
-
       </div>
 
-      {/* КНОПКА */}
+      {/* ===== КОММЕНТ ===== */}
+      <textarea
+        placeholder="Комментарий (например: чувствительная кожа)"
+        value={comment}
+        onChange={(e) => setComment(e.target.value)}
+        style={{
+          marginTop: "20px",
+          width: "100%",
+          height: "80px",
+          padding: "10px",
+          borderRadius: "8px",
+          border: "1px solid #ccc"
+        }}
+      />
+
+      {/* ===== КНОПКА ===== */}
       <button
         onClick={handleBooking}
         style={{ marginTop: "20px" }}
       >
         Подтвердить запись
       </button>
-
     </div>
-
   );
-
 }
 
 export default BookingPage;

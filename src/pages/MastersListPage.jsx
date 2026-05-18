@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { getMasters } from "../api/api";
 import MasterCard from "../components/MasterCard";
 
-function MastersListPage() {
-  const navigate = useNavigate();
+import "../styles/pages/MastersListPage.css";
 
+function MastersListPage() {
   const [masters, setMasters] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -25,12 +24,9 @@ function MastersListPage() {
   }, []);
 
   if (loading) {
-    return <p>Загрузка мастеров...</p>;
+    return <p className="loading">Загрузка...</p>;
   }
 
-  console.log(masters);
-
-  // группируем мастеров по специализации
   const grouped = masters.reduce((acc, master) => {
     const spec = master.specialization || "other";
 
@@ -39,10 +35,10 @@ function MastersListPage() {
     }
 
     acc[spec].push(master);
+
     return acc;
   }, {});
 
-  // названия блоков
   const titles = {
     nails: "Ногтевой сервис",
     brows: "Бровисты",
@@ -54,27 +50,58 @@ function MastersListPage() {
   };
 
   return (
-    <div style={{ padding: "30px" }}>
-      <h1>Каталог мастеров</h1>
+    <div className="masters-page">
 
-      {Object.entries(grouped).map(([spec, masters]) => (
-        <div key={spec} style={{ marginTop: "40px" }}>
-          <h2>{titles[spec] || spec}</h2>
+      <section className="hero-section">
+        <div className="hero-floating float-1"></div>
+        <div className="hero-floating float-2"></div>
+        <div className="hero-floating float-3"></div>
+        <div className="hero-content">
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(250px,1fr))",
-              gap: "20px",
-              marginTop: "15px"
-            }}
-          >
-            {masters.map((master) => (
-              <MasterCard key={master.id} master={master} />
-            ))}
+          <span className="hero-badge">
+            beauty booking platform
+          </span>
+
+            <h1>
+              Найдите мастера,
+              <br />
+              которому доверите себя
+            </h1>
+
+            <p>
+              Онлайн-запись к частным beauty-специалистам.
+              Удобный поиск, услуги и бронирование в одном месте.
+            </p>
+
           </div>
-        </div>
-      ))}
+
+        </section>
+      <div className="content-wrapper">
+
+        {Object.entries(grouped).map(([spec, masters]) => (
+          <section
+            className="category-section"
+            key={spec}
+          >
+            <div className="category-header">
+              <h2>{titles[spec] || spec}</h2>
+            </div>
+
+            <div className="masters-grid">
+
+              {masters.map((master) => (
+                <MasterCard
+                  key={master.id}
+                  master={master}
+                />
+              ))}
+
+            </div>
+          </section>
+        ))}
+
+      </div>
+
     </div>
   );
 }

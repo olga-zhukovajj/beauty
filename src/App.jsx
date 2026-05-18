@@ -5,6 +5,9 @@ import SchedulePage from "./pages/SchedulePage";
 import BookingPage from "./pages/BookingPage";
 import MasterProfilePage from "./pages/MasterProfilePage";
 import MastersListPage from "./pages/MastersListPage";
+import "./styles/global/reset.css";
+import "./styles/global/variables.css";
+import "./styles/global/global.css";
 
 
 function App() {

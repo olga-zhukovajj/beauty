@@ -9,59 +9,83 @@ const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
+// Multer storage
 const storage = multer.diskStorage({
-destination: path.join(__dirname, "../uploads"),
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
-  }
+  destination: path.join(__dirname, "../uploads"),
+  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname)),
 });
-
 const upload = multer({ storage });
 
-// получить портфолио мастера
-router.get("/:masterId", async (req, res) => {
+// GET портфолио по masterId через query
+router.get("/", async (req, res) => {
   try {
-    const { masterId } = req.params;
+    const { masterId } = req.query;
+    if (!masterId) return res.status(400).json({ message: "masterId обязателен" });
 
     const result = await pool.query(
-      "SELECT * FROM portfolio WHERE master_id = $1 ORDER BY created_at DESC",
+      "SELECT * FROM portfolio WHERE master_id=$1 ORDER BY created_at DESC",
       [masterId]
     );
-
     res.json(result.rows);
-
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Ошибка загрузки портфолио" });
   }
 });
 
-// добавить фото
-router.post("/", upload.single("image"), async (req, res) => {
+// POST — добавить фото
+router.post("/", upload.array("image"), async (req, res) => {
   try {
 
     const { masterId } = req.body;
 
-    const imageUrl = `/uploads/${req.file.filename}`;
+    if (!masterId) {
+      return res.status(400).json({
+        message: "masterId обязателен"
+      });
+    }
 
-    const result = await pool.query(
-      `INSERT INTO portfolio (master_id, image_url)
-       VALUES ($1, $2)
-       RETURNING *`,
-      [masterId, imageUrl]
-    );
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({
+        message: "Файлы не найдены"
+      });
+    }
 
-    res.json(result.rows[0]);
+    const uploadedImages = [];
+
+    for (const file of req.files) {
+
+      const imageUrl = `/uploads/${file.filename}`;
+
+      const result = await pool.query(
+        `
+        INSERT INTO portfolio
+        (master_id, image_url)
+        VALUES ($1, $2)
+        RETURNING *
+        `,
+        [masterId, imageUrl]
+      );
+
+      uploadedImages.push(result.rows[0]);
+    }
+
+    res.json(uploadedImages);
 
   } catch (err) {
+
     console.error(err);
-    res.status(500).json({ message: "Ошибка загрузки фото" });
+
+    res.status(500).json({
+      message: "Ошибка добавления фото"
+    });
+
   }
 });
 
-// удалить фото
 router.delete("/:id", async (req, res) => {
   try {
+
     const { id } = req.params;
 
     await pool.query(
@@ -69,11 +93,18 @@ router.delete("/:id", async (req, res) => {
       [id]
     );
 
-    res.json({ success: true });
+    res.json({
+      success: true
+    });
 
   } catch (err) {
+
     console.error(err);
-    res.status(500).json({ message: "Ошибка удаления" });
+
+    res.status(500).json({
+      error: "Ошибка удаления"
+    });
+
   }
 });
 

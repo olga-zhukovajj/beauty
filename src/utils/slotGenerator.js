@@ -17,7 +17,8 @@ export const getAvailableSlots = (
   date,
   serviceDuration
 ) => {
-  const dayOfWeek = new Date(date).getDay();
+  let dayOfWeek = new Date(date).getDay();
+  dayOfWeek = dayOfWeek === 0 ? 7 : dayOfWeek;
   const weeklySchedule = getWeeklySchedule(masterId);
 
   const daySchedule = weeklySchedule[dayOfWeek];

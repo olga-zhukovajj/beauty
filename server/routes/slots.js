@@ -3,94 +3,109 @@ import { pool } from "../db.js";
 
 const router = express.Router();
 
-router.get("/:masterId/available-slots", async (req, res) => {
-
+router.get("/:id/available-slots", async (req, res) => {
   try {
+    console.log("=== СЛОТЫ ===");
 
-    const { masterId } = req.params;
-    const { duration, date } = req.query;
+    const masterId = req.params.id;
+    const { date, serviceId } = req.query;
 
-    const durationNum = Number(duration);
+    console.log("REQ QUERY:", req.query);
+    console.log("MASTER:", masterId);
+    console.log("DATE:", date);
+    console.log("SERVICE:", serviceId);
 
-    // текущая дата/время
-    const now = new Date();
+    // длительность услуги
+    const serviceRes = await pool.query(
+      "SELECT duration FROM services WHERE id = $1",
+      [serviceId]
+    );
 
-    const selectedDate = new Date(date + "T00:00:00");
+    const duration = serviceRes.rows[0]?.duration || 60;
+    console.log("DURATION:", duration);
 
-    const isToday =
-      selectedDate.toDateString() === now.toDateString();
+    // день недели
+    let dayOfWeek = new Date(date).getDay();
+    dayOfWeek = dayOfWeek === 0 ? 7 : dayOfWeek;
 
-    // день недели (ПН=1, ВС=0)
-    const jsDay = selectedDate.getDay();
-    const dayOfWeek = jsDay === 0 ? 0 : jsDay;
+    console.log("DAY:", dayOfWeek);
 
-    // расписание мастера
-    const schedule = await pool.query(
-      `SELECT start_time, end_time
-       FROM schedules
-       WHERE master_id = $1 AND day = $2`,
+    // расписание
+    const scheduleResult = await pool.query(
+      "SELECT * FROM schedules WHERE master_id=$1 AND day=$2",
       [masterId, dayOfWeek]
     );
 
-    if (schedule.rows.length === 0) {
+    console.log("SCHEDULE:", scheduleResult.rows);
+
+    if (!scheduleResult.rows.length) {
+      console.log("❌ НЕТ РАСПИСАНИЯ");
       return res.json([]);
     }
 
-    const startTime = schedule.rows[0].start_time;
-    const endTime = schedule.rows[0].end_time;
+    const startTime = scheduleResult.rows[0].start_time.slice(0,5);
+    const endTime = scheduleResult.rows[0].end_time.slice(0,5);
 
-    // занятые записи
+    const toMin = (t) => {
+      const [h, m] = t.split(":").map(Number);
+      return h * 60 + m;
+    };
+
+    const toTime = (m) => {
+      const h = String(Math.floor(m / 60)).padStart(2, "0");
+      const mm = String(m % 60).padStart(2, "0");
+      return `${h}:${mm}`;
+    };
+
+    const start = toMin(startTime);
+    const end = toMin(endTime);
+
+    console.log("WORK TIME:", startTime, "-", endTime);
+
+    // записи
     const appointments = await pool.query(
-      `SELECT start_time
-       FROM appointments
-       WHERE master_id = $1
-       AND appointment_date = $2`,
+      "SELECT start_time, service_id FROM appointments WHERE master_id=$1 AND appointment_date=$2",
       [masterId, date]
     );
 
-    const bookedTimes = appointments.rows.map(a =>
-      a.start_time.toString().slice(0, 5)
-    );
+    console.log("APPOINTMENTS:", appointments.rows);
 
     const slots = [];
 
-    let current = new Date(`1970-01-01T${startTime}`);
-    const end = new Date(`1970-01-01T${endTime}`);
+    for (let t = start; t + duration <= end; t += 30) {
+      let isBusy = false;
 
-    while (new Date(current.getTime() + durationNum * 60000) <= end) {
+      for (let a of appointments.rows) {
+        const service = await pool.query(
+          "SELECT duration FROM services WHERE id=$1",
+          [a.service_id]
+        );
 
-      const timeStr = current.toTimeString().slice(0, 5);
+        const busyDuration = service.rows[0]?.duration || 60;
 
-      // 🚨 ВОТ ГЛАВНАЯ МАГИЯ
-      if (isToday) {
-        const [h, m] = timeStr.split(":");
-        const slotDate = new Date();
-        slotDate.setHours(Number(h), Number(m), 0, 0);
+        const [h, m] = a.start_time.slice(0,5).split(":").map(Number);
+        const aStart = h * 60 + m;
+        const aEnd = aStart + busyDuration;
 
-        if (slotDate <= now) {
-          current.setMinutes(current.getMinutes() + durationNum);
-          continue;
+        if (t < aEnd && (t + duration) > aStart) {
+          isBusy = true;
+          break;
         }
       }
 
-      const isBooked = bookedTimes.includes(timeStr);
-
-      if (!isBooked) {
-        slots.push(timeStr);
+      if (!isBusy) {
+        slots.push(toTime(t));
       }
-
-      current.setMinutes(current.getMinutes() + durationNum);
     }
+
+    console.log("RESULT SLOTS:", slots);
 
     res.json(slots);
 
-  } catch (error) {
-
-    console.error("SLOTS ERROR:", error);
+  } catch (err) {
+    console.error("❌ ОШИБКА:", err);
     res.status(500).json({ message: "Ошибка получения слотов" });
-
   }
-
 });
 
 export default router;

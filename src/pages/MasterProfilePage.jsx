@@ -3,9 +3,9 @@ import { useParams, useNavigate } from "react-router-dom";
 import { getMasterById } from "../api/api";
 import { getToken, getCurrentUser } from "../storage/auth";
 import Portfolio from "../pages/Portfolio";
+import "../styles/pages/MasterProfilePage.css";
 
 function MasterProfilePage() {
-
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -16,34 +16,24 @@ function MasterProfilePage() {
   const currentUser = getCurrentUser();
 
   useEffect(() => {
-
     async function fetchMaster() {
-
       try {
-
         const token = getToken();
         const data = await getMasterById(id, token);
         setMaster(data);
-
       } catch (err) {
-
         setError(err.message || "Ошибка при загрузке мастера");
-
       } finally {
-
         setLoading(false);
-
       }
-
     }
 
     fetchMaster();
-
   }, [id]);
 
-  if (loading) return <p>Загрузка профиля мастера...</p>;
-  if (error) return <p style={{ color: "red" }}>{error}</p>;
-  if (!master) return <p>Мастер не найден</p>;
+  if (loading) return <p className="loading">Загрузка профиля...</p>;
+  if (error) return <p className="error">{error}</p>;
+  if (!master) return <p className="error">Мастер не найден</p>;
 
   const isOwner =
     currentUser?.role === "master" &&
@@ -52,49 +42,77 @@ function MasterProfilePage() {
   const isClient = currentUser?.role === "client";
 
   return (
-    <div style={{ padding: "20px" }}>
+    <div className="profile-page">
 
-      <h2>{master.name}</h2>
-      <p>Email: {master.email}</p>
+      {/* HERO PROFILE */}
+      <section className="profile-hero">
 
-      {/* КНОПКА ЗАПИСИ */}
-      {isClient && (
-        <button
-          onClick={() => navigate(`/booking/${master.id}`)}
-          style={{ marginTop: "10px" }}
-        >
-          Записаться
-        </button>
-      )}
+        <div className="profile-card">
 
-      {/* УПРАВЛЕНИЕ */}
-      {isOwner && (
-        <div style={{ marginTop: "20px" }}>
-          <button onClick={() => navigate("/services")}>
-            Управлять услугами
-          </button>
+          <div className="avatar-large">
+            {master.name?.[0] || "M"}
+          </div>
 
-          <button
-            onClick={() => navigate("/schedule")}
-            style={{ marginLeft: "10px" }}
-          >
-            Управлять расписанием
-          </button>
+          <div className="profile-info">
+            <h1>{master.name}</h1>
+            <p>{master.email}</p>
+
+            <span className="role-badge">
+              beauty specialist
+            </span>
+          </div>
+
         </div>
-      )}
 
-      {/* ПОРТФОЛИО — ВОТ ОНО */}
-      <Portfolio
-        masterId={master.id}
-        isOwner={isOwner}
-      />
+        {/* ACTIONS */}
+        <div className="actions">
 
-      <button
-        onClick={() => navigate("/masters")}
-        style={{ marginTop: "30px" }}
-      >
-        На главную
-      </button>
+          {isClient && (
+            <button
+              className="primary-btn"
+              onClick={() => navigate(`/booking/${master.id}`)}
+            >
+              Записаться
+            </button>
+          )}
+
+          {isOwner && (
+            <>
+              <button
+                className="secondary-btn"
+                onClick={() => navigate("/services")}
+              >
+                Услуги
+              </button>
+
+              <button
+                className="secondary-btn"
+                onClick={() => navigate("/schedule")}
+              >
+                Расписание
+              </button>
+            </>
+          )}
+
+        </div>
+
+      </section>
+
+      {/* PORTFOLIO */}
+      <section className="portfolio-section">
+        <h2>Портфолио</h2>
+
+        <Portfolio
+          masterId={master.id}
+          isOwner={isOwner}
+        />
+      </section>
+
+      <div className="back">
+        <button onClick={() => navigate("/masters")}>
+          ← Назад
+        </button>
+      </div>
 
     </div>
   );

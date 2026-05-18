@@ -1,0 +1,17 @@
+:root {
+  --primary-color: #78020E;
+  --primary-hover: #002697;
+
+  --accent-color: #ff4fa3;
+
+  --background-color: rgb(162, 210, 255);
+  --card-background: #ffffff;
+
+  --text-color: #1a1f36;
+  --secondary-text: #6b7280;
+
+  --border-radius: 20px;
+
+  --box-shadow:
+    0 10px 30px rgba(36, 91, 255, 0.12);
+}

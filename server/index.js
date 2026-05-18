@@ -8,12 +8,22 @@ import appointmentsRoutes from "./routes/appointments.js";
 import slotsRoutes from "./routes/slots.js";
 import portfolioRoutes from "./routes/portfolio.js";
 import path from "path";
+import { fileURLToPath } from "url";
 
+console.log("🚀 СТАРТ ФАЙЛА");
 
+process.on("uncaughtException", (err) => {
+  console.error("💥 UNCAUGHT:", err);
+});
 
+process.on("unhandledRejection", (err) => {
+  console.error("💥 PROMISE ERROR:", err);
+});
 dotenv.config();
 
 const app = express();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 app.use(cors());
 app.use(express.json());
@@ -21,8 +31,7 @@ app.use("/api", authRoutes);
 app.use("/api/masters", slotsRoutes);
 app.use("/api/appointments", appointmentsRoutes);
 app.use("/api/portfolio", portfolioRoutes);
-app.use("/uploads", express.static("uploads"));
-
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.get("/", (req, res) => {
   res.send("Server is runng!!!! 🚀");
@@ -218,9 +227,23 @@ app.post("/api/masters/:id/schedule", async (req, res) => {
 app.get("/api/masters/:id/available-slots", async (req, res) => {
   try {
     const masterId = req.params.id;
-    const { date } = req.query;
+    const { date, serviceId } = req.query;
 
-    const dayOfWeek = new Date(date).getDay();
+    if (!serviceId || !date) {
+      return res.status(400).json({ message: "serviceId и date обязательны" });
+    }
+
+    // получаем длительность услуги
+    const serviceRes = await pool.query(
+      "SELECT duration FROM services WHERE id = $1",
+      [serviceId]
+    );
+
+    const duration = serviceRes.rows[0]?.duration || 60;
+
+    // расписание дня
+    let dayOfWeek = new Date(date).getDay();
+    dayOfWeek = dayOfWeek === 0 ? 7 : dayOfWeek;
 
     const scheduleResult = await pool.query(
       "SELECT * FROM schedules WHERE master_id=$1 AND day=$2",
@@ -231,27 +254,54 @@ app.get("/api/masters/:id/available-slots", async (req, res) => {
       return res.json([]);
     }
 
-    const { start_time, end_time } = scheduleResult.rows[0];
+    const startTime = scheduleResult.rows[0].start_time.slice(0,5);
+    const endTime = scheduleResult.rows[0].end_time.slice(0,5);
+
+    const toMin = (t) => {
+      const [h, m] = t.split(":").map(Number);
+      return h * 60 + m;
+    };
+
+    const toTime = (m) => {
+      const h = String(Math.floor(m / 60)).padStart(2, "0");
+      const mm = String(m % 60).padStart(2, "0");
+      return `${h}:${mm}`;
+    };
+
+    const start = toMin(startTime);
+    const end = toMin(endTime);
 
     const appointments = await pool.query(
-      "SELECT start_time FROM appointments WHERE master_id=$1 AND appointment_date=$2",
+      "SELECT start_time, service_id FROM appointments WHERE master_id=$1 AND appointment_date=$2",
       [masterId, date]
     );
 
-    const booked = appointments.rows.map(a => a.start_time);
-
     const slots = [];
 
-    let current = start_time;
+    for (let t = start; t + duration <= end; t += 30) {
+      let isBusy = false;
 
-    while (current < end_time) {
-      if (!booked.includes(current)) {
-        slots.push(current);
+      for (let a of appointments.rows) {
+        const service = await pool.query(
+          "SELECT duration FROM services WHERE id=$1",
+          [a.service_id]
+        );
+
+        const busyDuration = service.rows[0]?.duration || 60;
+
+        const [h, m] = a.start_time.slice(0,5).split(":").map(Number);
+        const aStart = h * 60 + m;
+        const aEnd = aStart + busyDuration;
+
+        if (t < aEnd && (t + duration) > aStart) {
+          isBusy = true;
+          break;
+        }
       }
 
-      const [h, m] = current.split(":").map(Number);
-      const next = new Date(0,0,0,h,m+60);
-      current = next.toTimeString().slice(0,5);
+      if (!isBusy) {
+        slots.push(toTime(t));
+      }
     }
 
     res.json(slots);
@@ -262,35 +312,8 @@ app.get("/api/masters/:id/available-slots", async (req, res) => {
   }
 });
 
-app.post("/api/appointments", async (req, res) => {
-  try {
 
-    const {
-      master_id,
-      service_id,
-      appointment_date,
-      start_time,
-      client_name
-    } = req.body;
-
-    const result = await pool.query(
-      `INSERT INTO appointments
-      (master_id, service_id, appointment_date, start_time, client_name)
-      VALUES ($1,$2,$3,$4,$5)
-      RETURNING *`,
-      [master_id, service_id, appointment_date, start_time, client_name]
-    );
-
-    res.json(result.rows[0]);
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Ошибка записи" });
-  }
-});
 
 app.listen(PORT, () => {
-  console.log(`Server started on port ${PORT}`);
+  console.log(`🔥 Server started on port ${PORT}`);
 });
-
-
