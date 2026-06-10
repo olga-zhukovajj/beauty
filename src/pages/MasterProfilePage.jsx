@@ -91,6 +91,20 @@ function MasterProfilePage() {
               >
                 Расписание
               </button>
+
+              <button
+                className="secondary-btn"
+                onClick={() => navigate("/master/diary")}
+              >
+                Дневник записей
+              </button>
+
+              {/* <button
+                className="secondary-btn"
+                onClick={() => navigate("/master-appointments")}
+              >
+                Записи
+              </button> */}
             </>
           )}
 

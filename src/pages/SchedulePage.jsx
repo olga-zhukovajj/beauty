@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getToken } from "../storage/auth";
 import { getSchedule, saveSchedule } from "../api/api";
+import "../styles/pages/SchedulePage.css";
 
 const days = [
   { id: 1, label: "Понедельник" },
@@ -78,56 +79,87 @@ function SchedulePage() {
 
   };
 
-  return (
-    <div>
+    return (
+      <div className="schedule-page">
 
-      <h2>График работы</h2>
+        <div className="schedule-header">
+          <h2>График работы</h2>
+          <p>Настрой удобное расписание приёма клиентов</p>
+        </div>
 
-      {days.map((day) => (
+        <div className="schedule-list">
 
-        <div key={day.id} style={{marginBottom:20}}>
+          {days.map((day) => (
+            <div
+              key={day.id}
+              className={`schedule-item ${
+                schedule[day.id] ? "active" : ""
+              }`}
+            >
 
-          <strong>{day.label}</strong>
+              <div className="left">
 
-          <button onClick={() => toggleDay(day.id)} style={{marginLeft:10}}>
-            {schedule[day.id] ? "Рабочий день" : "Выходной"}
-          </button>
+                <span className="day-name">
+                  {day.label}
+                </span>
 
-          {schedule[day.id] && (
+                <button
+                  className="toggle-btn"
+                  onClick={() => toggleDay(day.id)}
+                >
+                  {schedule[day.id]
+                    ? "Рабочий день"
+                    : "Выходной"}
+                </button>
 
-            <div style={{marginTop:10}}>
+              </div>
 
-              <input
-                type="time"
-                value={schedule[day.id].start}
-                onChange={(e)=>handleChange(day.id,"start",e.target.value)}
-              />
+              {schedule[day.id] && (
+                <div className="right">
 
-              <span style={{margin:"0 10px"}}>—</span>
+                  <input
+                    type="time"
+                    value={schedule[day.id].start}
+                    onChange={(e) =>
+                      handleChange(day.id, "start", e.target.value)
+                    }
+                  />
 
-              <input
-                type="time"
-                value={schedule[day.id].end}
-                onChange={(e)=>handleChange(day.id,"end",e.target.value)}
-              />
+                  <span className="dash">—</span>
+
+                  <input
+                    type="time"
+                    value={schedule[day.id].end}
+                    onChange={(e) =>
+                      handleChange(day.id, "end", e.target.value)
+                    }
+                  />
+
+                </div>
+              )}
 
             </div>
-
-          )}
+          ))}
 
         </div>
 
-      ))}
+        <div className="schedule-footer">
 
-      <button onClick={handleSave}>Сохранить</button>
+          <button className="primary-btn" onClick={handleSave}>
+            Сохранить изменения
+          </button>
 
-      <button onClick={() => navigate(`/master/${masterId}`)}>
-        ← Вернуться в профиль
-      </button>
+          <button
+            className="secondary-btn"
+            onClick={() => navigate(`/master/${masterId}`)}
+          >
+            ← Назад
+          </button>
 
-    </div>
-  );
+        </div>
 
+      </div>
+    );
 }
 
 export default SchedulePage;

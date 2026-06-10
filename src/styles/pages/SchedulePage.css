@@ -1,0 +1,200 @@
+
+/* PAGE */
+
+.schedule-page {
+  padding: 50px 70px;
+
+  max-width: 900px;
+
+  margin: 0 auto;
+}
+
+/* HEADER */
+
+.schedule-header h2 {
+  font-size: 44px;
+
+  color: var(--primary);
+
+  margin-bottom: 6px;
+
+  font-family: "Kudry", sans-serif;
+}
+
+.schedule-header p {
+  color: var(--gray);
+
+  margin-bottom: 30px;
+}
+
+/* LIST */
+
+.schedule-list {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 14px;
+}
+
+/* ITEM */
+
+.schedule-item {
+  display: flex;
+
+  justify-content: space-between;
+
+  align-items: center;
+
+  padding: 18px 20px;
+
+  border-radius: 22px;
+
+  background: rgba(255,255,255,0.72);
+
+  border: 1px solid rgba(162,210,255,0.25);
+
+  backdrop-filter: blur(12px);
+
+  transition: 0.25s;
+}
+
+.schedule-item:hover {
+  transform: translateY(-2px);
+
+  box-shadow: 0 12px 24px rgba(120,2,14,0.08);
+}
+
+.schedule-item.active {
+  border-left: 5px solid var(--primary);
+}
+
+/* LEFT */
+
+.left {
+  display: flex;
+
+  align-items: center;
+
+  gap: 14px;
+}
+
+.day-name {
+  font-weight: 800;
+
+  font-size: 18px;
+
+  color: var(--text);
+}
+
+/* TOGGLE */
+
+.toggle-btn {
+  padding: 8px 12px;
+
+  border-radius: 999px;
+
+  border: 1px solid rgba(162,210,255,0.35);
+
+  background: rgba(255,255,255,0.7);
+
+  color: var(--primary);
+
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition: 0.2s;
+}
+
+.toggle-btn:hover {
+  background: white;
+
+  transform: translateY(-1px);
+}
+
+/* RIGHT TIME */
+
+.right {
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+}
+
+.right input {
+  padding: 10px 12px;
+
+  border-radius: 12px;
+
+  border: 1px solid rgba(162,210,255,0.35);
+
+  background: rgba(255,255,255,0.85);
+
+  font-family: "Manrope", sans-serif;
+}
+
+.dash {
+  color: var(--gray);
+}
+
+/* FOOTER */
+
+.schedule-footer {
+  margin-top: 30px;
+
+  display: flex;
+
+  gap: 12px;
+}
+
+/* PRIMARY */
+
+.primary-btn {
+  padding: 12px 18px;
+
+  border-radius: 14px;
+
+  border: none;
+
+  background: var(--primary);
+
+  color: white;
+
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition: 0.25s;
+}
+
+.primary-btn:hover {
+  transform: translateY(-2px);
+}
+
+/* SECONDARY */
+
+.secondary-btn {
+  padding: 12px 18px;
+
+  border-radius: 14px;
+
+  border: 1px solid rgba(162,210,255,0.4);
+
+  background: rgba(255,255,255,0.7);
+
+  color: var(--primary);
+
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition: 0.25s;
+}
+
+.secondary-btn:hover {
+  transform: translateY(-2px);
+
+  background: white;
+}

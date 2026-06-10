@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getToken } from "../storage/auth";
 import { getServices, addService, removeService } from "../api/api";
+import "../styles/pages/ServicesPage.css";
 
 function ServicesPage() {
   const navigate = useNavigate();
@@ -50,25 +51,85 @@ function ServicesPage() {
   };
 
   return (
-    <div>
-      <h2>Услуги мастера</h2>
-      <form onSubmit={handleAdd}>
-        <input name="title" placeholder="Название услуги" value={form.title} onChange={handleChange} required />
-        <input name="duration" placeholder="Длительность (мин)" type="number" value={form.duration} onChange={handleChange} required />
-        <input name="price" placeholder="Цена" type="number" value={form.price} onChange={handleChange} required />
-        <button type="submit">Добавить услугу</button>
+    <div className="services-page">
+
+      <div className="services-header">
+        <h2>Услуги</h2>
+        <p>Управляй своими услугами и ценами</p>
+      </div>
+
+      {/* FORM */}
+      <form className="service-form" onSubmit={handleAdd}>
+
+        <input
+          name="title"
+          placeholder="Название услуги"
+          value={form.title}
+          onChange={handleChange}
+          required
+        />
+
+        <input
+          name="duration"
+          type="number"
+          placeholder="Длительность (мин)"
+          value={form.duration}
+          onChange={handleChange}
+          required
+        />
+
+        <input
+          name="price"
+          type="number"
+          placeholder="Цена"
+          value={form.price}
+          onChange={handleChange}
+          required
+        />
+
+        <button type="submit" className="primary-btn">
+          Добавить услугу
+        </button>
+
       </form>
 
-      <ul>
-        {services.map(s => (
-          <li key={s.id}>
-            {s.title} — {s.duration} мин — {s.price} ₽
-            <button onClick={() => handleRemove(s.id)}>Удалить</button>
-          </li>
-        ))}
-      </ul>
+      {/* GRID */}
+      <div className="services-grid">
 
-      <button onClick={() => navigate(`/master/${masterId}`)}>← Вернуться в профиль</button>
+        {services.map((s) => (
+
+          <div key={s.id} className="service-card">
+
+            <div className="service-info">
+
+              <h3>{s.title}</h3>
+
+              <p>
+                {s.duration} мин • {s.price} ₽
+              </p>
+
+            </div>
+
+            <button
+              className="delete-btn"
+              onClick={() => handleRemove(s.id)}
+            >
+              Удалить
+            </button>
+
+          </div>
+
+        ))}
+
+      </div>
+
+      <button
+        className="back-btn"
+        onClick={() => navigate(`/master/${masterId}`)}
+      >
+        ← Назад в профиль
+      </button>
+
     </div>
   );
 }

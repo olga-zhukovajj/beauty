@@ -97,34 +97,28 @@ export async function saveSchedule(masterId, schedule, token) {
 }
 
 
-export async function getAvailableSlots(masterId, serviceId, date) {
-  const response = await fetch(
-    `http://localhost:5000/api/masters/${masterId}/available-slots?serviceId=${serviceId}&date=${date}`
+export async function getAvailableSlots(masterId, date, duration = 60) {
+  const res = await fetch(
+    `${API_URL}/masters/${masterId}/available-slots?date=${date}&duration=${duration}`
   );
 
-  if (!response.ok) {
-    throw new Error("Ошибка получения слотов");
-  }
+  if (!res.ok) throw new Error("Ошибка получения слотов");
 
-  const data = await response.json();
-
-
-  return data;
+  return res.json();
 }
 
 
 export async function createAppointment(data) {
-
   const payload = {
     master_id: data.masterId,
-    service_id: data.serviceId,
+    services: data.services,
     appointment_date: data.date,
     start_time: data.time,
+    client_id: data.clientId,
     client_name: data.clientName,
-    client_comment: data.clientComment,
+    client_comment: data.clientComment
   };
-
-  console.log("📤 ОТПРАВКА:", payload);
+  console.log("SEND:", payload);
 
   const response = await fetch("http://localhost:5000/api/appointments", {
     method: "POST",
@@ -141,7 +135,44 @@ export async function createAppointment(data) {
   return response.json();
 }
 
+export async function getMasterAppointments(masterId) {
 
+  const response = await fetch(
+    `http://localhost:5000/api/masters/${masterId}/appointments`
+  );
+
+  if (!response.ok) {
+    throw new Error("Ошибка получения записей");
+  }
+
+  return response.json();
+}
+
+export async function getAppointmentsByDate(masterId, date) {
+  const res = await fetch(
+    `${API_URL}/masters/${masterId}/appointments-by-date?date=${date}`
+  );
+
+  if (!res.ok) throw new Error("Ошибка получения расписания");
+
+  return res.json();
+}
+
+export async function completeAppointment(id) {
+
+  const response = await fetch(
+    `http://localhost:5000/api/appointments/${id}/complete`,
+    {
+      method: "PATCH"
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Ошибка обновления статуса");
+  }
+
+  return response.json();
+}
 
 export async function getPortfolio(masterId) {
   const res = await fetch(`http://localhost:5000/api/portfolio/${masterId}`);

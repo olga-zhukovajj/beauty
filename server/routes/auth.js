@@ -8,7 +8,7 @@ const router = express.Router();
 // Регистрация
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password, role, specialization } = req.body;
+    const { name, email, password, phone, role, specialization } = req.body;
 
     if (!name || !email || !password || !role) {
       return res.status(400).json({ message: "Все поля обязательны" });
@@ -39,13 +39,34 @@ router.post("/register", async (req, res) => {
 
     // Сохраняем пользователя
     const newUser = await pool.query(
-      "INSERT INTO users (name, email, password_hash, role, specialization) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email, role, specialization",
+      `
+      INSERT INTO users
+      (
+        name,
+        email,
+        password_hash,
+        phone,
+        role,
+        specialization
+      )
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING
+        id,
+        name,
+        email,
+        phone,
+        role,
+        specialization
+      `,
       [
         name,
         email,
         hashedPassword,
+        phone,
         role,
-        role === "master" ? specialization : null
+        role === "master"
+          ? specialization
+          : null
       ]
     );
 
@@ -82,7 +103,10 @@ router.post("/login", async (req, res) => {
     const user = userResult.rows[0];
 
     // Проверяем пароль
-    const isMatch = await bcrypt.compare(password, user.password_hash);
+    const isMatch = await bcrypt.compare(
+      password, 
+      user.password_hash
+    );
 
     if (!isMatch) {
       return res.status(400).json({ message: "Неверный пароль" });
